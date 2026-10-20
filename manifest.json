@@ -1,0 +1,44 @@
+{
+  "name": "拾光台 · 个人生活管理工作台",
+  "short_name": "拾光台",
+  "description": "本地优先的个人生活管理工作台：理财记账、收藏夹、物品管理、行李打包、旅游计划、菜单日程、菜谱、身体记录、运动记录、愿望清单、备忘提醒。数据仅存本机浏览器。",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "id": "/",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui",
+    "browser"
+  ],
+  "orientation": "any",
+  "background_color": "#FAFAF7",
+  "theme_color": "#FAFAF7",
+  "categories": [
+    "productivity",
+    "lifestyle",
+    "health"
+  ],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
