@@ -434,7 +434,9 @@ function saveAll(){
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
 
 /* ---------- 工具 ---------- */
-function fmtMoney(n){ const v=Number(n)||0; return "¥"+v.toLocaleString("zh-CN",{minimumFractionDigits:0,maximumFractionDigits:2}); }
+/* 含角分时固定两位（7,897.8 → 7,897.80），整数保持紧凑（16,800）——与饼图图例口径一致 */
+function fmtMoney(n){ const v=Number(n)||0; const frac=Math.abs(v%1)>1e-9;
+  return "¥"+v.toLocaleString("zh-CN",{minimumFractionDigits:frac?2:0,maximumFractionDigits:2}); }
 function todayStr(){ return dateStr(new Date()); }
 function dateStr(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
 function monthStr(d){ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); }
@@ -927,7 +929,7 @@ function finPieHTML(ms){
       +'<p>'+monthLabel(ms)+'没有支出记录</p>'
       +'<p style="font-size:12px;color:var(--ink-3);margin-top:4px">左右滑动或点箭头可以看其他月份</p></div>';
   }
-  /* 分类过多时把尾部合并成「其他 N 类」，避免饼图碎片化 */
+  /* 分类过多时把尾部合并成「其余 N 类」，避免饼图碎片化（不与真实分类「其他」撞名） */
   let slices=entries;
   if(entries.length>7){
     const rest=entries.slice(6);
