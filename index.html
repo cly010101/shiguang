@@ -845,6 +845,20 @@ function parseCSV(text){
   if(field!==""||row.length){ row.push(field); if(row.some(x=>x.trim()!=="")) rows.push(row); }
   return rows;
 }
+/* 账单 CSV 编码不统一：支付宝、喵喵记账多为 UTF-8(带 BOM)，Excel 另存的常是 GBK/GB18030。
+   按 BOM → UTF-8 严格校验 → GB18030 的顺序解码，避免中文表头变乱码后整列认不出。 */
+function decodeBytes(buf){
+  const b=new Uint8Array(buf);
+  if(b.length>=2){
+    try{
+      if(b[0]===0xFF&&b[1]===0xFE) return new TextDecoder("utf-16le").decode(b);
+      if(b[0]===0xFE&&b[1]===0xFF) return new TextDecoder("utf-16be").decode(b);
+    }catch(e){}
+  }
+  try{ return new TextDecoder("utf-8",{fatal:true}).decode(b).replace(/^\uFEFF/,""); }catch(e){}
+  try{ return new TextDecoder("gb18030").decode(b).replace(/^\uFEFF/,""); }catch(e){}
+  return new TextDecoder("utf-8").decode(b);
+}
 function openCsvImportModal(){
   openModal('<div class="modal-title">导入 CSV 账单</div>'
     +'<div class="notice">支持支付宝/微信/银行导出的 CSV。第一步选择文件，第二步映射列（日期、金额、类型…），预览确认后写入。</div>'
@@ -854,8 +868,8 @@ function openCsvImportModal(){
   document.getElementById("csvFile").onchange=e=>{
     const f=e.target.files[0]; if(!f) return;
     const rd=new FileReader();
-    rd.onload=()=>{ csvMappingStep(parseCSV(rd.result)); };
-    rd.readAsText(f,"UTF-8");
+    rd.onload=()=>{ csvMappingStep(parseCSV(decodeBytes(rd.result))); };
+    rd.readAsArrayBuffer(f);
   };
 }
 function csvMappingStep(rows){
@@ -878,24 +892,52 @@ function csvMappingStep(rows){
     const map={};
     document.querySelectorAll("[data-field]").forEach(s=>{ map[s.dataset.field]=parseInt(s.value,10); });
     if(map.date<0||map.amount<0){ toast("日期和金额列必须映射"); return; }
-    const errors=[]; let ok=0;
+    const errors=[]; let ok=0, dup=0;
+    /* 账单有两种常见写法：①用正负号表达收支（支出为负，如喵喵记账）②全为正数、靠「收/支」列区分（如支付宝）。
+       先扫一遍金额列：只要出现过负数，就按符号判断收支；全为正数时维持「无类型列默认支出」。 */
+    const numOf=v=>{
+      const s=String(v==null?"":v).replace(/[¥￥$€£,，\s\u00a0元]/g,"")
+        .replace(/[（(]/g,"-").replace(/[）)]/g,"");
+      const n=parseFloat(s);
+      return isFinite(n)?n:NaN;
+    };
+    let hasNeg=false;
+    for(let i=1;i<rows.length;i++){ const v=numOf(rows[i][map.amount]); if(isFinite(v)&&v<0){ hasNeg=true; break; } }
+    const sig=t=>[t.date,t.type,Number(t.amount).toFixed(2),t.category,t.account||"",t.note||""].join("|");
+    /* 库里如果还全是首次访问播种的示例数据，导入真实账单前先清掉，否则统计会被那几条假数据污染 */
+    let clearedDemo=0;
+    if(state.transactions.length && state.transactions.every(t=>t.demo)){
+      clearedDemo=state.transactions.length; state.transactions=[];
+    }
+    const exist=new Set(state.transactions.map(sig));
     rows.slice(1).forEach((r,idx)=>{
-      const rawAmt=String(r[map.amount]||"").replace(/[¥￥,\s]/g,"");
-      const amt=parseFloat(rawAmt);
-      let dt=String(r[map.date]||"").trim().replace(/[./年]/g,"-").replace(/月/g,"-").replace(/日/g,"");
-      const dm=dt.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
-      if(!dm||!(amt>0)){ errors.push("第 "+(idx+2)+" 行：日期或金额无法识别（"+esc(String(r[map.date]||""))+" / "+esc(String(r[map.amount]||""))+"）"); return; }
-      dt=dm[1]+"-"+dm[2].padStart(2,"0")+"-"+dm[3].padStart(2,"0");
-      let type="expense";
-      if(map.type>=0){ const tv=String(r[map.type]||""); if(/收|income|入/i.test(tv)&&!/支出/.test(tv)) type="income"; }
-      state.transactions.push({id:uid(), date:dt, type:type, amount:amt,
+      const rowNo=idx+2;
+      const rawDate=String(r[map.date]||"").trim();
+      const dm=rawDate.replace(/[./年]/g,"-").replace(/月/g,"-").replace(/日/g,"").trim().match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+      const n=numOf(r[map.amount]);
+      if(!dm){ errors.push("第 "+rowNo+" 行：日期认不出（"+esc(rawDate||"空")+"）"); return; }
+      if(!isFinite(n)||n===0){ errors.push("第 "+rowNo+" 行：金额认不出（"+esc(String(r[map.amount]||"空"))+"）"); return; }
+      const date=dm[1]+"-"+dm[2].padStart(2,"0")+"-"+dm[3].padStart(2,"0");
+      let type;
+      if(map.type>=0 && String(r[map.type]||"").trim()!==""){
+        const tv=String(r[map.type]||"");
+        type=/支出|expense|付款|debit|借/i.test(tv)?"expense":(/收|income|入|refund|贷/i.test(tv)?"income":"expense");
+      }else{
+        type=hasNeg?(n<0?"expense":"income"):"expense";
+      }
+      const rec={id:uid(), date:date, type:type, amount:Math.abs(n),
         category:map.category>=0?String(r[map.category]||"").trim()||"其他支出":"其他支出",
-        note:map.note>=0?String(r[map.note]||"").trim():"", account:map.account>=0?String(r[map.account]||"").trim():""});
-      ok++;
+        note:map.note>=0?String(r[map.note]||"").trim():"", account:map.account>=0?String(r[map.account]||"").trim():""};
+      if(exist.has(sig(rec))){ dup++; return; }
+      exist.add(sig(rec));
+      state.transactions.push(rec); ok++;
     });
     save("transactions");
+    const skipTxt=(clearedDemo?"，已清除 "+clearedDemo+" 条示例数据":"")+(dup?"，跳过重复 "+dup+" 条":"")+(errors.length?"，"+errors.length+" 行无法识别":"");
     if(errors.length){
-      document.getElementById("csvMapArea").innerHTML='<div class="notice">成功导入 '+ok+' 条；'+errors.length+' 行被跳过：</div><div style="font-size:12px;color:var(--red);max-height:180px;overflow-y:auto">'+errors.slice(0,30).join("<br>")+'</div><div class="modal-actions"><button class="btn btn-primary" onclick="closeModal();refreshAll()">完成</button></div>';
+      document.getElementById("csvMapArea").innerHTML='<div class="notice">成功导入 '+ok+' 条'+skipTxt+'：</div><div style="font-size:12px;color:var(--red);max-height:180px;overflow-y:auto">'+errors.slice(0,30).join("<br>")+'</div><div class="modal-actions"><button class="btn btn-primary" onclick="closeModal();refreshAll()">完成</button></div>';
+    }else if(dup){
+      document.getElementById("csvMapArea").innerHTML='<div class="notice">成功导入 '+ok+' 条，跳过重复 '+dup+' 条。</div><div class="modal-actions"><button class="btn btn-primary" onclick="closeModal();refreshAll()">完成</button></div>';
     }else{ closeModal(); refreshAll(); toast("成功导入 "+ok+" 条记录"); }
   };
 }
@@ -2216,7 +2258,7 @@ function openXlsxImportModal(){
     area.innerHTML = '<p style="font-size:13px;color:var(--ink-3)">正在解析 '+esc(f.name)+' …</p>';
     try{
       let rows;
-      if(/\.csv$/i.test(f.name)) rows = parseCSV(await f.text());
+      if(/\.csv$/i.test(f.name)) rows = parseCSV(decodeBytes(await f.arrayBuffer()));
       else rows = await parseXlsxToAoa(new Uint8Array(await f.arrayBuffer()));
       travelMappingStep(rows);
     }catch(err){
@@ -3056,8 +3098,8 @@ function bodyImportFile(){
   const f = input.files && input.files[0];
   if(!f) return;
   const rd = new FileReader();
-  rd.onload = ()=>{ bodyImportMapping(parseCSV(String(rd.result||""))); };
-  rd.readAsText(f, "utf-8");
+  rd.onload = ()=>{ bodyImportMapping(parseCSV(decodeBytes(rd.result))); };
+  rd.readAsArrayBuffer(f);
   input.value = "";
 }
 
@@ -3404,8 +3446,8 @@ function sportImportFile(){
   const f = input.files && input.files[0];
   if(!f) return;
   const rd = new FileReader();
-  rd.onload = ()=>{ sportImportMapping(parseCSV(String(rd.result||""))); };
-  rd.readAsText(f, "utf-8");
+  rd.onload = ()=>{ sportImportMapping(parseCSV(decodeBytes(rd.result))); };
+  rd.readAsArrayBuffer(f);
   input.value = "";
 }
 
@@ -4031,15 +4073,15 @@ function seedData(){
   if(state.settings.seeded) return;
   const td=todayStr(), yd=addDays(td,-1);
   state.transactions=[
-    {id:uid(),date:td,type:"expense",amount:42,category:"餐饮",account:"微信",note:"午餐"},
-    {id:uid(),date:td,type:"expense",amount:18,category:"交通",account:"支付宝",note:"地铁通勤"},
-    {id:uid(),date:yd,type:"expense",amount:268,category:"购物",account:"微信",note:"无针注射器测试耗材收纳箱"},
-    {id:uid(),date:addDays(td,-3),type:"income",amount:15000,category:"工资",account:"银行卡",note:"10月工资"},
-    {id:uid(),date:addDays(td,-5),type:"expense",amount:3200,category:"住房",account:"银行卡",note:"房租"},
-    {id:uid(),date:addDays(td,-8),type:"expense",amount:156,category:"医疗",account:"支付宝",note:"维生素补充剂"},
-    {id:uid(),date:addDays(td,-32),type:"expense",amount:2880,category:"住房",account:"银行卡",note:"上月房租"},
-    {id:uid(),date:addDays(td,-33),type:"income",amount:15000,category:"工资",account:"银行卡",note:"9月工资"},
-    {id:uid(),date:addDays(td,-36),type:"expense",amount:980,category:"旅行",account:"微信",note:"周末短途高铁+住宿"}
+    {id:uid(),demo:true,date:td,type:"expense",amount:42,category:"餐饮",account:"微信",note:"午餐"},
+    {id:uid(),demo:true,date:td,type:"expense",amount:18,category:"交通",account:"支付宝",note:"地铁通勤"},
+    {id:uid(),demo:true,date:yd,type:"expense",amount:268,category:"购物",account:"微信",note:"无针注射器测试耗材收纳箱"},
+    {id:uid(),demo:true,date:addDays(td,-3),type:"income",amount:15000,category:"工资",account:"银行卡",note:"10月工资"},
+    {id:uid(),demo:true,date:addDays(td,-5),type:"expense",amount:3200,category:"住房",account:"银行卡",note:"房租"},
+    {id:uid(),demo:true,date:addDays(td,-8),type:"expense",amount:156,category:"医疗",account:"支付宝",note:"维生素补充剂"},
+    {id:uid(),demo:true,date:addDays(td,-32),type:"expense",amount:2880,category:"住房",account:"银行卡",note:"上月房租"},
+    {id:uid(),demo:true,date:addDays(td,-33),type:"income",amount:15000,category:"工资",account:"银行卡",note:"9月工资"},
+    {id:uid(),demo:true,date:addDays(td,-36),type:"expense",amount:980,category:"旅行",account:"微信",note:"周末短途高铁+住宿"}
   ];
   state.goals=[{id:uid(),name:"应急储备金",target:100000,deadline:"2027-06-30",saved:56000}];
   state.snapshots=[
