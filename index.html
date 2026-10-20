@@ -938,7 +938,7 @@ function csvMappingStep(rows){
       document.getElementById("csvMapArea").innerHTML='<div class="notice">成功导入 '+ok+' 条'+skipTxt+'：</div><div style="font-size:12px;color:var(--red);max-height:180px;overflow-y:auto">'+errors.slice(0,30).join("<br>")+'</div><div class="modal-actions"><button class="btn btn-primary" onclick="closeModal();refreshAll()">完成</button></div>';
     }else if(dup){
       document.getElementById("csvMapArea").innerHTML='<div class="notice">成功导入 '+ok+' 条，跳过重复 '+dup+' 条。</div><div class="modal-actions"><button class="btn btn-primary" onclick="closeModal();refreshAll()">完成</button></div>';
-    }else{ closeModal(); refreshAll(); toast("成功导入 "+ok+" 条记录"); }
+    }else{ closeModal(); refreshAll(); toast("成功导入 "+ok+" 条记录"+skipTxt); }
   };
 }
 function exportTxnCSV(){
