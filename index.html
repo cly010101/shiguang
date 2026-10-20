@@ -73,7 +73,8 @@ svg{display:block}
 .brand-text{min-width:0;flex:1;overflow:hidden;transition:opacity .15s}
 .brand-name{font-size:17px;font-weight:600;letter-spacing:.5px;white-space:nowrap}
 .brand-sub{font-size:11px;color:var(--ink-3);white-space:nowrap}
-.nav-toggle{width:26px;height:26px;min-height:0;border-radius:8px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--ink-3);flex-shrink:0;transition:transform .22s,background .15s}
+.nav-toggle{width:26px;height:26px;min-height:0;border-radius:8px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--ink-3);flex-shrink:0;transition:transform .22s,background .15s;position:relative}
+.nav-toggle::after{content:"";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:44px;height:44px}
 .nav-toggle:hover{background:var(--bg-soft)}
 .nav-toggle svg{width:14px;height:14px}
 #navList{flex:1;min-height:0}
@@ -4176,6 +4177,11 @@ function afterBoot(cloudResult){
   document.getElementById("navToggle").addEventListener("click", ()=>setNavCollapsed(!document.body.classList.contains("nav-collapsed")));
   document.getElementById("navBackdrop").addEventListener("click", ()=>setNavCollapsed(true,true));
   window.addEventListener("resize", updateNavBackdrop);
+  /* 独立托管（无平台数据 SDK）时不显示同步胶囊，避免顶栏留一个无意义的灰点 */
+  if(!(window.__SMART_PAGE__ && window.__SMART_PAGE__.database)){
+    var pl=document.getElementById("cloudPill");
+    if(pl) pl.style.display="none";
+  }
   switchView("dashboard");
   /* 云端原本为空：把本地（含示例或已有）数据整体上传 */
   if(cloudResult && cloudResult.mode==="cloud" && !cloudResult.cloudHasData && window.__cloud && window.__cloud.pushAll){
