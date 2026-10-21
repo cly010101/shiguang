@@ -239,6 +239,38 @@ tr:hover td{background:var(--bg)}
 .recipe-name{font-size:15px;font-weight:600;display:flex;align-items:center;gap:6px}
 .recipe-meta{font-size:12px;color:var(--ink-3);display:flex;gap:10px;flex-wrap:wrap}
 .recipe-ings{font-size:12px;color:var(--ink-2);line-height:1.7;max-height:44px;overflow:hidden}
+/* 卡片整块可点开详情 */
+.recipe-card{cursor:pointer}
+.recipe-card:hover{box-shadow:var(--shadow)}
+.recipe-card:active{transform:scale(.995)}
+.recipe-card:focus-visible{outline:2px solid var(--sage);outline-offset:2px}
+.recipe-name>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.recipe-chev{margin-left:auto;color:var(--ink-3);font-size:16px;line-height:1;flex-shrink:0;transition:transform .16s,color .16s}
+.recipe-card:hover .recipe-chev{color:var(--sage);transform:translateX(2px)}
+/* ===== 菜谱详情（只读） ===== */
+.rc-d-head{display:flex;align-items:flex-start;gap:12px}
+.rc-d-name{font-size:19px;font-weight:600;line-height:1.4;flex:1;min-width:0}
+.rc-d-x{flex-shrink:0;width:30px;height:30px;border:0;background:var(--bg-soft);border-radius:50%;color:var(--ink-3);font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;margin-top:-1px;transition:background .15s,color .15s}
+.rc-d-x:hover{background:var(--line);color:var(--ink)}
+.rc-d-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.rc-d-sec{margin-top:20px}
+.rc-d-sec-t{font-size:11.5px;color:var(--ink-3);letter-spacing:.08em;margin-bottom:9px}
+.rc-d-ing{display:flex;justify-content:space-between;align-items:baseline;gap:14px;padding:8px 0;border-bottom:1px dashed var(--line);font-size:13.5px;line-height:1.6}
+.rc-d-ing:last-child{border-bottom:0}
+.rc-d-amt{color:var(--ink-2);white-space:nowrap;font-variant-numeric:tabular-nums}
+.rc-d-step{display:flex;gap:10px;margin-bottom:13px;font-size:13.5px;line-height:1.8;color:var(--ink)}
+.rc-d-num{flex-shrink:0;width:21px;height:21px;border-radius:50%;background:var(--sage-soft);color:var(--sage);font-size:11.5px;font-weight:600;display:flex;align-items:center;justify-content:center;margin-top:3px}
+.rc-d-note{background:var(--sand-soft);border-radius:var(--r-sm);padding:11px 13px;font-size:13px;color:var(--ink-2);line-height:1.8}
+.rc-d-src{font-size:12px;color:var(--ink-3);margin-top:16px;line-height:1.7}
+.rc-d-empty{font-size:13px;color:var(--ink-3);line-height:1.8}
+/* 手机上详情较长，留白收紧一点，减少滚动距离 */
+@media (max-width:560px){
+  .rc-modal{padding:20px}
+  .rc-d-name{font-size:18px}
+  .rc-d-sec{margin-top:16px}
+  .rc-d-step{margin-bottom:11px}
+  .rc-modal .modal-actions{margin-top:18px}
+}
 .ing-row{display:grid;grid-template-columns:1fr 110px 34px;gap:8px;margin-bottom:6px;align-items:center}
 /* ===== 身体管理：月历 ===== */
 .cal-head{display:flex;align-items:center;gap:8px;margin-bottom:var(--sp-3);flex-wrap:wrap}
@@ -2792,13 +2824,14 @@ function renderRecipesBody(){
   }else{
     html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:var(--sp-3)">';
     list.forEach(r=>{
-      html += '<div class="recipe-card">'
-        +'<div class="recipe-name">'+esc(r.name||"未命名菜谱")+'</div>'
+      const ingsN=(r.ingredients||[]).filter(i=>String(i.name||"").trim()).length;
+      html += '<div class="recipe-card" data-rc-open="'+r.id+'" tabindex="0" role="button" title="点击查看详情" aria-label="查看菜谱详情：'+esc(r.name||"未命名菜谱")+'">'
+        +'<div class="recipe-name"><span>'+esc(r.name||"未命名菜谱")+'</span><span class="recipe-chev" aria-hidden="true">›</span></div>'
         +'<div class="recipe-meta">'
           +(r.servings?'<span>'+esc(r.servings)+'</span>':"")
           +(r.minutes?'<span>'+esc(r.minutes)+' 分钟</span>':"")
           +(r.difficulty?'<span>'+esc(r.difficulty)+'</span>':"")
-          +'<span>'+(r.ingredients||[]).length+' 种食材</span>'
+          +'<span>'+ingsN+' 种食材</span>'
         +'</div>'
         +((r.tags||[]).length?'<div>'+r.tags.map(t=>'<span class="chip sage" style="margin-right:4px">'+esc(t)+'</span>').join("")+'</div>':"")
         +'<div class="recipe-ings">'+esc((r.ingredients||[]).map(i=>i.name+(i.amount?" "+i.amount:"")).join("、")||"（还没填食材）")+'</div>'
@@ -2821,6 +2854,13 @@ function renderRecipesBody(){
   q.oninput = e=>{ recipeFilter.q=e.target.value; renderRecipesBody(); const nq=document.getElementById("rcQ"); nq.focus(); nq.setSelectionRange(nq.value.length,nq.value.length); };
   const sel = document.getElementById("rcTag"); sel.value = recipeFilter.tag;
   sel.onchange = e=>{ recipeFilter.tag=e.target.value; renderRecipesBody(); };
+  body.querySelectorAll("[data-rc-open]").forEach(c=>{
+    const go = ()=>recipeDetailModal(c.dataset.rcOpen);
+    c.addEventListener("click", e=>{ if(e.target.closest("button,input,select,a")) return; go(); });
+    c.addEventListener("keydown", e=>{
+      if(e.key==="Enter"||e.key===" "){ e.preventDefault(); go(); }
+    });
+  });
   body.querySelectorAll("[data-rc-edit]").forEach(b=>b.onclick=()=>recipeEditModal(b.dataset.rcEdit));
   body.querySelectorAll("[data-rc-meal]").forEach(b=>b.onclick=()=>recipeToMeal(b.dataset.rcMeal));
   body.querySelectorAll("[data-rc-del]").forEach(b=>b.onclick=()=>confirmDanger("删除这道菜谱","删除后不可恢复，已排在菜单里的那几餐会变成空档。",()=>{
@@ -2829,6 +2869,70 @@ function renderRecipesBody(){
     state.mealPlans.forEach(p=>{ if(p.recipeId===rid){ p.recipeId=""; p.text="（菜谱已删除）"; } });
     save("recipes"); save("mealPlans"); refreshAll(); toast("已删除菜谱");
   }));
+}
+
+/* 只读详情：点卡片打开，食材与步骤完整可读，不进入编辑态 */
+function recipeDetailModal(id){
+  const r = state.recipes.find(x=>x.id===id);
+  if(!r){ toast("这道菜谱已经不在了"); refreshAll(); return; }
+  const ings  = (r.ingredients||[]).filter(i=>String(i.name||"").trim());
+  const steps = (r.steps||[]).filter(s=>String(s||"").trim());
+  const meta  = [];
+  if(r.servings)  meta.push(String(r.servings));
+  if(r.minutes)   meta.push(r.minutes+" 分钟");
+  if(r.difficulty) meta.push(String(r.difficulty));
+  meta.push(ings.length+" 种食材");
+  meta.push(steps.length+" 步");
+
+  let html = '<div class="rc-d-head"><div class="rc-d-name">'+esc(r.name||"未命名菜谱")+'</div>'
+    +'<button class="rc-d-x" id="rcDX" type="button" aria-label="关闭详情">✕</button></div>'
+    +'<div class="rc-d-meta">'+meta.map(m=>'<span class="chip">'+esc(m)+'</span>').join("")+'</div>'
+    +((r.tags||[]).length?'<div class="rc-d-meta">'+r.tags.map(t=>'<span class="chip sage">'+esc(t)+'</span>').join("")+'</div>':"");
+
+  html += '<div class="rc-d-sec"><div class="rc-d-sec-t">食材</div>';
+  html += ings.length
+    ? ings.map(i=>'<div class="rc-d-ing"><span>'+esc(i.name)+'</span><span class="rc-d-amt">'+esc(i.amount||"—")+'</span></div>').join("")
+    : '<div class="rc-d-empty">还没填食材，点下面「编辑」补充</div>';
+  html += '</div>';
+
+  html += '<div class="rc-d-sec"><div class="rc-d-sec-t">做法</div>';
+  html += steps.length
+    ? steps.map((s,i)=>'<div class="rc-d-step"><span class="rc-d-num">'+(i+1)+'</span><span>'+esc(s)+'</span></div>').join("")
+    : '<div class="rc-d-empty">还没写步骤，点下面「编辑」补充</div>';
+  html += '</div>';
+
+  if(r.note)   html += '<div class="rc-d-sec"><div class="rc-d-sec-t">小贴士</div><div class="rc-d-note">'+esc(r.note)+'</div></div>';
+  if(r.source) html += '<div class="rc-d-src">来源：'+esc(r.source)+'</div>';
+
+  html += '<div class="modal-actions" style="flex-wrap:wrap;gap:8px">'
+    +'<button class="btn btn-ghost" id="rcDClose">关闭</button>'
+    +'<button class="btn btn-ghost" id="rcDShop">加入购物清单</button>'
+    +'<button class="btn btn-ghost" id="rcDMeal">排进菜单</button>'
+    +'<button class="btn btn-primary" id="rcDEdit">编辑</button></div>';
+  openModal(html);
+  document.getElementById("modalBox").classList.add("rc-modal");
+
+  document.getElementById("rcDX").onclick    = closeModal;
+  document.getElementById("rcDClose").onclick = closeModal;
+  document.getElementById("rcDEdit").onclick  = ()=>{ closeModal(); recipeEditModal(id); };
+  document.getElementById("rcDMeal").onclick  = ()=>{ closeModal(); recipeToMeal(id); };
+  document.getElementById("rcDShop").onclick  = ()=>{
+    if(!ings.length){ toast("这道菜谱还没有食材"); return; }
+    const exist = new Set(state.shopping.filter(s=>!s.purchased).map(s=>String(s.name||"").trim()));
+    let n = 0, dup = 0;
+    ings.forEach(i=>{
+      const nm = String(i.name).trim();
+      if(exist.has(nm)){ dup++; return; }
+      exist.add(nm);
+      state.shopping.push({id:uid(), name:nm, qty:1, budget:"", purchased:false, skipped:false,
+        purchaseDate:"", review:"", skipReason:"",
+        note:(i.amount?("用量 "+i.amount+" "):"")+"（"+String(r.name||"菜谱")+"）", source:"菜谱"});
+      n++;
+    });
+    save("shopping"); refreshAll();
+    toast(n ? ("已加入 "+n+" 样食材到购物清单"+(dup?("，跳过已在清单的 "+dup+" 样"):""))
+            : "这些食材都已在购物清单里");
+  };
 }
 
 function ingRowHtml(name, amount){
