@@ -136,6 +136,9 @@ body.nav-collapsed .nav-item:hover::after{content:attr(data-tip);position:absolu
 .grid{display:grid;gap:var(--sp-4)}
 .grid-2{grid-template-columns:repeat(2,1fr)}
 .grid-3{grid-template-columns:repeat(3,1fr)}
+/* 1fr 的最小尺寸默认取 min-content，卡片里放了大图会把整列撑出屏幕，这里放开 */
+.grid-2>*,.grid-3>*,.grid-4>*{min-width:0}
+.grid img,.grid video{max-width:100%}
 /* ===== 支出构成卡（月份可左右滑动切换） ===== */
 .fin-month-bar{display:flex;align-items:center;gap:6px;margin-bottom:var(--sp-3)}
 .fin-month-nav{width:32px;height:32px;min-height:0;min-width:0;padding:0;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--ink-2);display:flex;align-items:center;justify-content:center;font-size:17px;line-height:1;cursor:pointer;flex-shrink:0;transition:background .15s,border-color .15s,color .15s}
@@ -293,6 +296,34 @@ tr:hover td{background:var(--bg)}
 .wish-title{font-size:15px;font-weight:600;display:flex;align-items:flex-start;gap:6px;line-height:1.4}
 .wish-title .done{color:var(--ink-3);text-decoration:line-through;font-weight:500}
 .wish-meta{font-size:12px;color:var(--ink-3);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+/* ===== 卡片整块可点开详情（收藏夹 / 愿望清单） ===== */
+.coll-card,.wish-card,[data-memo-open]{cursor:pointer}
+.coll-card:hover,.wish-card:hover,[data-memo-open]:hover{box-shadow:var(--shadow)}
+.coll-card:active,.wish-card:active,[data-memo-open]:active{transform:scale(.995)}
+.coll-card:focus-visible,.wish-card:focus-visible,[data-memo-open]:focus-visible{outline:2px solid var(--sage);outline-offset:2px}
+.coll-name{display:flex;align-items:flex-start;gap:6px;font-weight:500;font-size:15px;line-height:1.4;margin-bottom:4px}
+.coll-name>span:first-child,.wish-title>span:first-child{flex:1;min-width:0}
+.coll-chev,.wish-chev{margin-left:auto;color:var(--ink-3);font-size:16px;line-height:1;flex-shrink:0;align-self:flex-start;transition:transform .16s,color .16s}
+.coll-card:hover .coll-chev,.wish-card:hover .wish-chev,[data-memo-open]:hover .wish-chev{color:var(--sage);transform:translateX(2px)}
+/* ===== 通用只读详情（收藏 / 愿望） ===== */
+.dt-head{display:flex;align-items:flex-start;gap:12px}
+.dt-title{font-size:19px;font-weight:600;line-height:1.45;flex:1;min-width:0;word-break:break-word}
+.dt-x{flex-shrink:0;width:30px;height:30px;border:0;background:var(--bg-soft);border-radius:50%;color:var(--ink-3);font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;margin-top:-1px;transition:background .15s,color .15s}
+.dt-x:hover{background:var(--line);color:var(--ink)}
+.dt-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.dt-sec{margin-top:18px}
+.dt-sec-t{font-size:11.5px;color:var(--ink-3);letter-spacing:.08em;margin-bottom:9px}
+.dt-body{font-size:14px;line-height:1.85;color:var(--ink);white-space:pre-wrap;word-break:break-word}
+.dt-kv{display:grid;grid-template-columns:80px 1fr;gap:9px 12px;font-size:13.5px;line-height:1.65}
+.dt-kv>b{font-weight:400;color:var(--ink-3)}
+.dt-kv>span{color:var(--ink);word-break:break-word;min-width:0}
+.dt-imgs{display:flex;flex-direction:column;gap:10px}
+.dt-imgs img{width:100%;border-radius:10px;border:1px solid var(--line);display:block;cursor:zoom-in}
+.dt-link{display:inline-block;font-size:13px;color:var(--mist);word-break:break-all;line-height:1.7;text-decoration:underline;text-decoration-style:dotted;text-decoration-thickness:1px;text-underline-offset:3px}
+.dt-muted{font-size:13px;color:var(--ink-3);line-height:1.7}
+.dt-zoom{position:fixed;inset:0;background:rgba(24,24,21,.9);display:flex;align-items:center;justify-content:center;padding:12px;z-index:200;cursor:zoom-out;animation:fadeIn .15s ease}
+.dt-zoom img{max-width:100%;max-height:100%;object-fit:contain;border-radius:6px}
+@media (max-width:560px){ .dt-title{font-size:18px} .dt-sec{margin-top:15px} }
 /* ===== 备考 ===== */
 /* ===== 移动端适配 ===== */
 @media (max-width:860px){
@@ -751,8 +782,13 @@ function renderDashboard(){
   const recent=state.collections.slice(0,4);
   document.getElementById("dashCollMore").innerHTML=state.collections.length?'<button class="btn btn-sm btn-ghost" id="goColl">查看全部</button>':"";
   document.getElementById("dashColl").innerHTML=recent.length
-    ? recent.map(c=>'<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)"><span class="chip '+(c.platform==="xhs"?"red":c.platform==="douban"?"sage":"")+'" style="flex-shrink:0">'+({xhs:"小红书",douban:"豆瓣",other:"其他"}[c.platform])+'</span><span style="flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c.title)+'</span><span style="font-size:12px;color:var(--ink-3);flex-shrink:0">'+collStatusLabel(c.type,c.status)+'</span></div>').join("")
+    ? recent.map(c=>'<div class="dash-coll-row" data-dash-coll="'+c.id+'" role="button" tabindex="0" title="点击查看详情" style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer"><span class="chip '+(c.platform==="xhs"?"red":c.platform==="douban"?"sage":"")+'" style="flex-shrink:0">'+({xhs:"小红书",douban:"豆瓣",other:"其他"}[c.platform])+'</span><span style="flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(c.title)+'</span><span style="font-size:12px;color:var(--ink-3);flex-shrink:0">'+collStatusLabel(c.type,c.status)+'</span></div>').join("")
     : '<div class="empty" style="padding:20px"><p>还没有收藏，去收藏夹存第一条笔记</p></div>';
+  document.getElementById("dashColl").querySelectorAll("[data-dash-coll]").forEach(row=>{
+    const go=()=>collDetailModal(row.dataset.dashColl);
+    row.addEventListener("click", go);
+    row.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); go(); } });
+  });
   const gm=document.getElementById("goColl"); if(gm) gm.onclick=()=>switchView("collections");
 }
 
@@ -1498,7 +1534,7 @@ function renderCollections(){
       : collFilter.view==="card"
         ? '<div class="grid grid-3">'+list.map(c=>collCard(c,PF)).join("")+'</div>'
         : '<div class="tbl-wrap"><table><thead><tr><th>标题</th><th>平台</th><th>分类</th><th>状态</th><th>标签</th><th></th></tr></thead><tbody>'
-          +list.map(c=>'<tr><td style="font-weight:500;max-width:260px">'+esc(c.title)+(c.link?' <a href="'+esc(c.link)+'" target="_blank" rel="noopener" style="color:var(--mist);font-size:12px">原文</a>':"")+'</td><td><span class="chip '+(c.platform==="xhs"?"red":c.platform==="douban"?"sage":"")+'">'+PF[c.platform]+'</span></td><td>'+esc(c.type)+'</td><td>'+collStatusBtn(c)+'</td><td style="font-size:12px;color:var(--ink-3)">'+(c.tags||[]).map(t=>"#"+esc(t)).join(" ")+'</td><td style="white-space:nowrap"><button class="btn btn-sm btn-ghost btn-icon" data-edit="'+c.id+'">'+ICONS.edit+'</button> <button class="btn btn-sm btn-ghost btn-icon" data-del="'+c.id+'">'+ICONS.trash+'</button></td></tr>').join("")
+          +list.map(c=>'<tr><td style="font-weight:500;max-width:260px"><span data-coll-open="'+c.id+'" role="button" tabindex="0" title="点击查看详情" style="cursor:pointer;border-bottom:1px dashed var(--line)">'+esc(c.title)+'</span>'+(c.link?' <a href="'+esc(c.link)+'" target="_blank" rel="noopener" style="color:var(--mist);font-size:12px">原文</a>':"")+'</td><td><span class="chip '+(c.platform==="xhs"?"red":c.platform==="douban"?"sage":"")+'">'+PF[c.platform]+'</span></td><td>'+esc(c.type)+'</td><td>'+collStatusBtn(c)+'</td><td style="font-size:12px;color:var(--ink-3)">'+(c.tags||[]).map(t=>"#"+esc(t)).join(" ")+'</td><td style="white-space:nowrap"><button class="btn btn-sm btn-ghost btn-icon" data-edit="'+c.id+'">'+ICONS.edit+'</button> <button class="btn btn-sm btn-ghost btn-icon" data-del="'+c.id+'">'+ICONS.trash+'</button></td></tr>').join("")
           +'</tbody></table></div>');
   /* 绑定 */
   const q=document.getElementById("collQ"); q.oninput=e=>{collFilter.q=e.target.value; renderCollections(); const nq=document.getElementById("collQ"); nq.focus(); nq.setSelectionRange(nq.value.length,nq.value.length);};
@@ -1516,29 +1552,77 @@ function renderCollections(){
   el.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>confirmDanger("删除收藏","删除后不可恢复。",()=>{
     state.collections=state.collections.filter(c=>c.id!==b.dataset.del); save("collections"); refreshAll(); toast("已删除");
   }));
-  el.querySelectorAll("[data-viewimg]").forEach(b=>b.onclick=()=>{
-    const c=state.collections.find(x=>x.id===b.dataset.viewimg);
-    if(c) openCollDetail(c);
+  /* 卡片 / 列表标题整块可点开详情；卡内按钮、原文链接不拦截 */
+  el.querySelectorAll("[data-coll-open]").forEach(node=>{
+    const go=()=>collDetailModal(node.dataset.collOpen);
+    node.addEventListener("click", e=>{ if(e.target.closest("button,input,select,a")) return; go(); });
+    node.addEventListener("keydown", e=>{
+      if(e.key==="Enter"||e.key===" "){ e.preventDefault(); go(); }
+    });
   });
 }
 function collStatusBtn(c){
   return '<button class="chip '+(c.status==="done"?"sage":c.status==="doing"?"mist":"sand")+'" data-st="'+c.id+'" title="点击切换状态" style="border:none;cursor:pointer;min-height:28px">'+collStatusLabel(c.type,c.status)+'</button>';
 }
 function collCard(c,PF){
-  const cover=(c.images&&c.images.length)?'<img src="'+c.images[0]+'" style="width:100%;height:120px;object-fit:cover;border-radius:10px;margin-bottom:10px;border:1px solid var(--line)">':"";
-  return '<div class="card" style="padding:16px;display:flex;flex-direction:column">'+cover
-    +'<div style="font-weight:500;margin-bottom:4px;'+(c.images&&c.images.length?'cursor:pointer':'')+'" '+(c.images&&c.images.length?'data-viewimg="'+c.id+'"':"")+'>'+esc(c.title)+'</div>'
+  const imgs=(c.images||[]).filter(Boolean);
+  const cover=imgs.length?'<img src="'+imgs[0]+'" alt="" style="width:100%;height:120px;object-fit:cover;border-radius:10px;margin-bottom:10px;border:1px solid var(--line)">':"";
+  return '<div class="card coll-card" data-coll-open="'+c.id+'" tabindex="0" role="button" title="点击查看详情" aria-label="查看收藏详情：'+esc(c.title||"未命名收藏")+'" style="padding:16px;display:flex;flex-direction:column">'+cover
+    +'<div class="coll-name"><span>'+esc(c.title)+'</span><span class="coll-chev" aria-hidden="true">›</span></div>'
     +(c.content?'<div style="font-size:12px;color:var(--ink-2);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-bottom:8px">'+esc(c.content.slice(0,120))+'</div>':"")
-    +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"><span class="chip '+(c.platform==="xhs"?"red":c.platform==="douban"?"sage":"")+'">'+PF[c.platform]+'</span><span class="chip">'+esc(c.type)+'</span>'+(c.tags||[]).slice(0,3).map(t=>'<span class="chip mist">#'+esc(t)+'</span>').join("")+'</div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"><span class="chip '+(c.platform==="xhs"?"red":c.platform==="douban"?"sage":"")+'">'+PF[c.platform]+'</span><span class="chip">'+esc(c.type)+'</span>'
+    +(imgs.length>1?'<span class="chip sand">'+imgs.length+' 张图</span>':"")
+    +(c.tags||[]).slice(0,3).map(t=>'<span class="chip mist">#'+esc(t)+'</span>').join("")+'</div>'
     +'<div style="display:flex;gap:6px;align-items:center;margin-top:auto">'+collStatusBtn(c)+'<span style="flex:1"></span>'
     +(c.link?'<a class="btn btn-sm btn-ghost btn-icon" href="'+esc(c.link)+'" target="_blank" rel="noopener" title="打开原文" style="display:inline-flex;align-items:center;text-decoration:none;color:var(--ink-2)">↗</a>':"")
-    +'<button class="btn btn-sm btn-ghost btn-icon" data-edit="'+c.id+'">'+ICONS.edit+'</button><button class="btn btn-sm btn-ghost btn-icon" data-del="'+c.id+'">'+ICONS.trash+'</button></div></div>';
+    +'<button class="btn btn-sm btn-ghost btn-icon" data-edit="'+c.id+'" title="编辑">'+ICONS.edit+'</button><button class="btn btn-sm btn-ghost btn-icon" data-del="'+c.id+'" title="删除">'+ICONS.trash+'</button></div></div>';
 }
-function openCollDetail(c){
-  openModal('<div class="modal-title">'+esc(c.title)+'</div>'
-    +(c.images||[]).map(s=>'<img src="'+s+'" style="width:100%;border-radius:10px;margin-bottom:10px;border:1px solid var(--line)">').join("")
-    +'<p style="font-size:14px;color:var(--ink-2);white-space:pre-wrap">'+esc(c.content||"")+'</p>'
-    +'<div class="modal-actions"><button class="btn btn-primary" onclick="closeModal()">关闭</button></div>', true);
+
+/* ---------- 只读详情：点卡片打开，正文与全部截图完整可读 ---------- */
+const COLL_PF={xhs:"小红书",douban:"豆瓣",other:"其他"};
+function collDetailModal(id){
+  const c=state.collections.find(x=>x.id===id);
+  if(!c){ toast("这条收藏已经不在了"); refreshAll(); return; }
+  const imgs=(c.images||[]).filter(Boolean);
+  const body=String(c.content||"").trim();
+  let html='<div class="dt-head"><div class="dt-title">'+esc(c.title||"未命名收藏")+'</div>'
+    +'<button class="dt-x" id="dtX" type="button" aria-label="关闭详情">✕</button></div>'
+    +'<div class="dt-chips"><span class="chip '+(c.platform==="xhs"?"red":c.platform==="douban"?"sage":"")+'">'+(COLL_PF[c.platform]||"其他")+'</span>'
+    +'<span class="chip">'+esc(c.type||"未分类")+'</span>'
+    +'<span class="chip '+(c.status==="done"?"sage":c.status==="doing"?"mist":"sand")+'">'+collStatusLabel(c.type,c.status)+'</span>'
+    +(c.tags||[]).map(t=>'<span class="chip mist">#'+esc(t)+'</span>').join("")+'</div>';
+  if(imgs.length){
+    html+='<div class="dt-sec"><div class="dt-sec-t">截图 · '+imgs.length+' 张（点图放大）</div><div class="dt-imgs">'
+      +imgs.map((s,i)=>'<img src="'+s+'" alt="截图 '+(i+1)+'" data-zoom="'+i+'">').join("")+'</div></div>';
+  }
+  html+='<div class="dt-sec"><div class="dt-sec-t">正文</div>'
+    +(body?'<div class="dt-body">'+esc(body)+'</div>':'<div class="dt-muted">还没记录正文，点下面「编辑」补充</div>')+'</div>';
+  if(c.link) html+='<div class="dt-sec"><div class="dt-sec-t">原文链接</div><a class="dt-link" href="'+esc(c.link)+'" target="_blank" rel="noopener">'+esc(c.link)+'</a></div>';
+  if(c.createdAt) html+='<div class="dt-sec"><div class="dt-sec-t">收藏时间</div><div class="dt-muted">'+esc(c.createdAt)+'</div></div>';
+  html+='<div class="modal-actions" style="flex-wrap:wrap;gap:8px">'
+    +'<button class="btn btn-ghost" id="dtClose">关闭</button>'
+    +'<button class="btn btn-ghost" id="dtEdit">编辑</button>'
+    +'<span style="flex:1"></span>'
+    +(c.link?'<a class="btn btn-primary" href="'+esc(c.link)+'" target="_blank" rel="noopener" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center">打开原文 ↗</a>':"")
+    +'</div>';
+  openModal(html);
+  document.getElementById("modalBox").classList.add("rc-modal");
+
+  document.getElementById("dtX").onclick     = closeModal;
+  document.getElementById("dtClose").onclick = closeModal;
+  document.getElementById("dtEdit").onclick  = ()=>{ closeModal(); openCollConfirm(id); };
+  document.getElementById("modalBox").querySelectorAll("[data-zoom]").forEach(im=>{
+    im.onclick = ()=>dtZoomOpen(imgs[+im.dataset.zoom]);
+  });
+}
+/* 点图放大：全屏遮罩看原图，点任意处关闭 */
+function dtZoomOpen(src){
+  if(!src) return;
+  const d=document.createElement("div");
+  d.className="dt-zoom";
+  d.innerHTML='<img src="'+src+'" alt="放大查看">';
+  d.onclick=()=>d.remove();
+  document.body.appendChild(d);
 }
 /* ============================================================
  * 模块 3（物品管理部分）：物品台账 + 耗材更换提醒
@@ -1997,7 +2081,7 @@ function renderTravelBody(){
         +'<td style="text-align:right;font-variant-numeric:tabular-nums">'+(r.budget!==""&&r.budget!=null?fmtMoney(r.budget):"—")+'</td>'
         +'<td style="text-align:right;font-variant-numeric:tabular-nums;color:'+(Number(r.actual)>Number(r.budget||0)?"var(--red)":"var(--ink-2)")+'">'+(r.actual!==""&&r.actual!=null?fmtMoney(r.actual):"—")+'</td>'
         +'<td><span class="chip '+chip+'">'+tripStatusLabel(st)+'</span></td>'
-        +'<td style="color:var(--ink-3);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(r.note||"—")+'</td>'
+        +'<td title="'+esc(r.note||"")+'" style="color:var(--ink-3);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(r.note||"—")+'</td>'
         +'<td style="white-space:nowrap"><button class="btn btn-sm btn-ghost btn-icon" data-tv-edit="'+r.id+'" title="编辑">'+ICONS.edit+'</button> '
         +'<button class="btn btn-sm btn-ghost btn-icon" data-tv-del="'+r.id+'" title="删除">'+ICONS.trash+'</button></td></tr>';
     });
@@ -2673,6 +2757,8 @@ function renderMealsBody(){
 
 function mealCellModal(date, meal){
   const p = planAt(date, meal);
+  /* 这一餐关联了菜谱时，直接给出「查看做法」入口 */
+  const linked = (p && p.recipeId) ? state.recipes.find(r=>r.id===p.recipeId) : null;
   const recipes = state.recipes.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name),"zh"));
   openModal('<div class="modal-title">'+date+' · '+mealLabel(meal)+'</div>'
     +'<div><label>从菜谱里选</label><select id="mcRecipe"><option value="">（不关联菜谱，手填菜名）</option>'
@@ -2680,9 +2766,11 @@ function mealCellModal(date, meal){
     +'</select></div>'
     +'<div style="margin-top:12px"><label>或手填菜名 / 安排</label><input id="mcText" value="'+esc(p&&!p.recipeId?(p.text||""):"")+'" placeholder="如：番茄炒蛋 / 外面吃 / 剩菜"></div>'
     +'<div style="margin-top:12px"><label>备注</label><input id="mcNote" value="'+esc(p?(p.note||""):"")+'" placeholder="可选"></div>'
-    +'<div class="modal-actions">'+(p?'<button class="btn btn-danger" id="mcDel">删除</button>':"")
+    +'<div class="modal-actions" style="flex-wrap:wrap;gap:8px">'+(p?'<button class="btn btn-danger" id="mcDel">删除</button>':"")
+    +(linked?'<button class="btn btn-ghost" id="mcView">查看做法</button>':"")
     +'<span style="flex:1"></span><button class="btn btn-ghost" onclick="closeModal()">取消</button>'
     +'<button class="btn btn-primary" id="mcSave">保存</button></div>');
+  if(linked) document.getElementById("mcView").onclick=()=>{ closeModal(); recipeDetailModal(linked.id); };
   if(p) document.getElementById("mcDel").onclick=()=>{
     state.mealPlans = state.mealPlans.filter(x=>x.id!==p.id);
     save("mealPlans"); closeModal(); refreshAll(); toast("已删除");
@@ -4021,8 +4109,8 @@ function renderWishesBody(){
     list.forEach(w=>{
       const st = w.status||"idea";
       const prio = w.priority||"mid";
-      html += '<div class="wish-card">'
-        +'<div class="wish-title"><span class="'+(st==="done"?"done":"")+'">'+esc(w.title||"未命名")+'</span></div>'
+      html += '<div class="wish-card" data-wish-open="'+w.id+'" tabindex="0" role="button" title="点击查看详情" aria-label="查看详情：'+esc(w.title||"未命名")+'">'
+        +'<div class="wish-title"><span class="'+(st==="done"?"done":"")+'">'+esc(w.title||"未命名")+'</span><span class="wish-chev" aria-hidden="true">›</span></div>'
         +'<div class="wish-meta">'
           +'<span class="chip '+(prio==="high"?"red":prio==="low"?"": "sand")+'">'+PRIO_CN[prio]+'优先级</span>'
           +(kind==="wish"?'<span class="chip">'+esc(w.type||"其他")+'</span>':(w.bestTime?'<span class="chip">最佳：'+esc(w.bestTime)+'</span>':""))
@@ -4051,6 +4139,14 @@ function renderWishesBody(){
   document.getElementById("wishSort").onchange = e=>{ wishFilter.sort=e.target.value; renderWishesBody(); };
   const en = document.getElementById("wishEmptyNew"); if(en) en.onclick = ()=>wishEditModal(null);
 
+  /* 卡片整块可点开只读详情；卡内按钮、链接不拦截 */
+  box.querySelectorAll("[data-wish-open]").forEach(card=>{
+    const go=()=>wishDetailModal(card.dataset.wishOpen);
+    card.addEventListener("click", e=>{ if(e.target.closest("button,input,select,a")) return; go(); });
+    card.addEventListener("keydown", e=>{
+      if(e.key==="Enter"||e.key===" "){ e.preventDefault(); go(); }
+    });
+  });
   box.querySelectorAll("[data-wst]").forEach(b=>b.onclick=()=>{
     const w = state.wishes.find(x=>x.id===b.dataset.wst); if(!w) return;
     const i = WISH_STATUS.indexOf(w.status||"idea");
@@ -4067,6 +4163,63 @@ function renderWishesBody(){
     });
   });
   box.querySelectorAll("[data-wtrip]").forEach(b=>b.onclick=()=>wishMakeTrip(b.dataset.wtrip));
+}
+
+/* 只读详情：点卡片打开，备注全文、预算与日期等一次看全 */
+function wishDetailModal(id){
+  const w = (state.wishes||[]).find(x=>x.id===id);
+  if(!w){ toast("这个条目已经不在了"); refreshAll(); return; }
+  const kind = w.kind||"wish";
+  const st = w.status||"idea";
+  const prio = w.priority||"mid";
+  let html = '<div class="dt-head"><div class="dt-title">'+esc(w.title||"未命名")+'</div>'
+    +'<button class="dt-x" id="dtX" type="button" aria-label="关闭详情">✕</button></div>'
+    +'<div class="dt-chips">'
+      +'<span class="chip '+WISH_STATUS_CLS[st]+'">'+WISH_STATUS_CN[st]+'</span>'
+      +'<span class="chip '+(prio==="high"?"red":prio==="low"?"":"sand")+'">'+PRIO_CN[prio]+'优先级</span>'
+      +(kind==="wish"?'<span class="chip">'+esc(w.type||"其他")+'</span>':'<span class="chip mist">旅游清单</span>')
+      +(kind==="travel"&&w.tripId?'<span class="chip sage">已建行程</span>':"")
+    +'</div>';
+
+  const kv=[];
+  if(w.budget)      kv.push(["预算", fmtMoney(w.budget)]);
+  if(w.targetDate)  kv.push(["目标日期", esc(w.targetDate)]);
+  if(w.bestTime)    kv.push(["最佳时间", esc(w.bestTime)]);
+  if(w.createdAt)   kv.push(["创建时间", esc(w.createdAt)]);
+  if(w.doneAt)      kv.push(["完成时间", esc(w.doneAt)]);
+  if(kv.length){
+    html += '<div class="dt-sec"><div class="dt-sec-t">关键信息</div><div class="dt-kv">'
+      + kv.map(([k,v])=>'<b>'+k+'</b><span>'+v+'</span>').join("") + '</div></div>';
+  }
+
+  html += '<div class="dt-sec"><div class="dt-sec-t">备注</div>'
+    + (String(w.note||"").trim()
+        ? '<div class="dt-body">'+esc(w.note)+'</div>'
+        : '<div class="dt-muted">还没有写备注，点下面「编辑」补充</div>')
+    + '</div>';
+
+  if(w.link) html += '<div class="dt-sec"><div class="dt-sec-t">相关链接</div><a class="dt-link" href="'+esc(w.link)+'" target="_blank" rel="noopener">'+esc(w.link)+'</a></div>';
+
+  html += '<div class="modal-actions" style="flex-wrap:wrap;gap:8px">'
+    +'<button class="btn btn-ghost" id="dtClose">关闭</button>'
+    +'<button class="btn btn-ghost" id="dtWDel" style="color:var(--red)">删除</button>'
+    +'<span style="flex:1"></span>'
+    +(kind==="travel"&&!w.tripId?'<button class="btn btn-ghost" id="dtWTrip">建行程</button>':"")
+    +'<button class="btn btn-primary" id="dtWEdit">编辑</button></div>';
+  openModal(html);
+  document.getElementById("modalBox").classList.add("rc-modal");
+
+  document.getElementById("dtX").onclick     = closeModal;
+  document.getElementById("dtClose").onclick = closeModal;
+  document.getElementById("dtWEdit").onclick = ()=>{ closeModal(); wishEditModal(id); };
+  const tBtn=document.getElementById("dtWTrip");
+  if(tBtn) tBtn.onclick = ()=>{ closeModal(); wishMakeTrip(id); };
+  document.getElementById("dtWDel").onclick = ()=>{
+    confirmDanger("删除条目","将删除「"+(w.title||"未命名")+"」，无法撤销。",()=>{
+      state.wishes = state.wishes.filter(x=>x.id!==w.id);
+      save("wishes"); refreshAll(); toast("已删除");
+    });
+  };
 }
 
 function wishEditModal(id){
@@ -4179,9 +4332,9 @@ function renderMemos(){
     +(list.length
       ? list.map(m=>{
           const st=memoStatus(m);
-          return '<div class="card" style="margin-bottom:10px;padding:16px;display:flex;gap:12px;align-items:flex-start">'
+          return '<div class="card" data-memo-open="'+m.id+'" tabindex="0" role="button" title="点击查看详情" aria-label="查看备忘详情：'+esc(m.title)+'" style="margin-bottom:10px;padding:16px;display:flex;gap:12px;align-items:flex-start">'
             +'<button class="btn btn-sm '+(m.done?"btn-primary":"btn-ghost")+' btn-icon" data-toggle="'+m.id+'" title="'+(m.done?"标记未完成":"标记完成")+'" style="flex-shrink:0">'+(m.done?"✓":"")+'</button>'
-            +'<div style="flex:1;min-width:0"><div style="font-weight:500;'+(m.done?"text-decoration:line-through;color:var(--ink-3)":"")+'">'+esc(m.title)+'</div>'
+            +'<div style="flex:1;min-width:0"><div style="font-weight:500;display:flex;align-items:flex-start;gap:6px"><span style="flex:1;min-width:0;'+(m.done?"text-decoration:line-through;color:var(--ink-3)":"")+'">'+esc(m.title)+'</span><span class="wish-chev" aria-hidden="true">›</span></div>'
             +(m.content?'<div style="font-size:13px;color:var(--ink-2);margin-top:2px">'+esc(m.content)+'</div>':"")
             +'<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><span class="chip '+st.cls+'">'+st.label+'</span>'
             +(m.repeat!=="none"?'<span class="chip">重复：'+({daily:"每天",weekly:"每周",monthly:"每月"}[m.repeat]||"")+'</span>':"")
@@ -4196,6 +4349,14 @@ function renderMemos(){
   document.getElementById("memoTag").onchange=e=>{memoFilter.tag=e.target.value; renderMemos();};
   document.getElementById("memoShow").onchange=e=>{memoFilter.show=e.target.value; renderMemos();};
   document.getElementById("memoAdd").onclick=()=>openMemoModal();
+  /* 卡片整块可点开只读详情；卡内按钮不拦截 */
+  el.querySelectorAll("[data-memo-open]").forEach(card=>{
+    const go=()=>memoDetailModal(card.dataset.memoOpen);
+    card.addEventListener("click", e=>{ if(e.target.closest("button,input,select,a")) return; go(); });
+    card.addEventListener("keydown", e=>{
+      if(e.key==="Enter"||e.key===" "){ e.preventDefault(); go(); }
+    });
+  });
   el.querySelectorAll("[data-toggle]").forEach(b=>b.onclick=()=>{
     const m=state.memos.find(x=>x.id===b.dataset.toggle);
     if(m){ m.done=!m.done; save("memos"); refreshAll(); }
@@ -4205,6 +4366,48 @@ function renderMemos(){
     state.memos=state.memos.filter(m=>m.id!==b.dataset.del); save("memos"); refreshAll(); toast("已删除");
   }));
   el.querySelectorAll("[data-ics]").forEach(b=>b.onclick=()=>exportMemoICS(b.dataset.ics));
+}
+/* 只读详情：完整提醒时间、重复规则与创建时间，卡片上放不下的都在这里 */
+function memoDetailModal(id){
+  const m=state.memos.find(x=>x.id===id);
+  if(!m){ toast("这条备忘已经不在了"); refreshAll(); return; }
+  const st=memoStatus(m);
+  const nf=memoNextFire(m);
+  const rep={daily:"每天",weekly:"每周",monthly:"每月"}[m.repeat]||"不重复";
+  let html='<div class="dt-head"><div class="dt-title">'+esc(m.title)+'</div>'
+    +'<button class="dt-x" id="dtX" type="button" aria-label="关闭详情">✕</button></div>'
+    +'<div class="dt-chips"><span class="chip '+st.cls+'">'+st.label+'</span>'
+    +'<span class="chip">'+rep+'</span>'
+    +(m.tags||[]).map(t=>'<span class="chip">'+esc(t)+'</span>').join("")+'</div>';
+
+  const kv=[];
+  kv.push(["下次提醒", nf?esc(nf):"未设置提醒"]);
+  /* 一次性提醒的下次时间与设定时间等于同一个值，只留一行 */
+  if(m.remindAt && m.remindAt!==nf) kv.push(["设定的提醒", esc(m.remindAt)]);
+  if(m.repeat && m.repeat!=="none") kv.push(["重复规则", rep]);
+  if(m.createdAt) kv.push(["创建时间", esc(m.createdAt)]);
+  html+='<div class="dt-sec"><div class="dt-sec-t">提醒信息</div><div class="dt-kv">'
+    +kv.map(([k,v])=>'<b>'+k+'</b><span>'+v+'</span>').join("")+'</div></div>';
+
+  html+='<div class="dt-sec"><div class="dt-sec-t">内容</div>'
+    +(String(m.content||"").trim()?'<div class="dt-body">'+esc(m.content)+'</div>':'<div class="dt-muted">没有填内容，点下面「编辑」补充</div>')+'</div>';
+
+  html+='<div class="modal-actions" style="flex-wrap:wrap;gap:8px">'
+    +'<button class="btn btn-ghost" id="dtClose">关闭</button>'
+    +'<button class="btn btn-ghost" id="dtMDone">'+(m.done?"标记未完成":"标记完成")+'</button>'
+    +'<span style="flex:1"></span>'
+    +'<button class="btn btn-primary" id="dtMEdit">编辑</button></div>';
+  openModal(html);
+  document.getElementById("modalBox").classList.add("rc-modal");
+
+  document.getElementById("dtX").onclick     = closeModal;
+  document.getElementById("dtClose").onclick = closeModal;
+  document.getElementById("dtMEdit").onclick = ()=>{ closeModal(); openMemoModal(id); };
+  document.getElementById("dtMDone").onclick = ()=>{
+    const cur=state.memos.find(x=>x.id===id); if(!cur) return;
+    cur.done=!cur.done; save("memos"); closeModal(); refreshAll();
+    toast(cur.done?"已完成":"已标记未完成");
+  };
 }
 function openMemoModal(id){
   const m=id?state.memos.find(x=>x.id===id):{title:"",content:"",remindAt:todayStr()+" 09:00",repeat:"none",tags:[],done:false};
