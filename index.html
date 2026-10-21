@@ -170,7 +170,7 @@ body.nav-collapsed .nav-item:hover::after{content:attr(data-tip);position:absolu
 @media (max-width:480px){.fin-pie-wrap{flex-direction:column;align-items:stretch;gap:12px}.fin-pie-svg{align-self:center;width:168px}}
 .grid-4{grid-template-columns:repeat(4,1fr)}
 /* ===== 按钮 ===== */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:10px 18px;border-radius:var(--r-sm);font-size:14px;font-weight:500;transition:opacity .15s,background .15s;border:1px solid transparent}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;padding:10px 18px;border-radius:var(--r-sm);font-size:14px;font-weight:500;transition:opacity .15s,background .15s;border:1px solid transparent;white-space:nowrap}
 .btn:active{opacity:.8}
 .btn-primary{background:var(--sage);color:#fff}
 .btn-primary:hover{background:#6d8062}
@@ -183,13 +183,16 @@ body.nav-collapsed .nav-item:hover::after{content:attr(data-tip);position:absolu
 .tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r-md);background:var(--card)}
 table{width:100%;border-collapse:collapse;font-size:14px;min-width:560px}
 th{text-align:left;font-size:12px;font-weight:500;color:var(--ink-3);padding:10px 14px;border-bottom:1px solid var(--line);background:var(--bg-soft);white-space:nowrap}
-td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap}
+/* 长文本列：显式声明可换行，避免被上面的 nowrap 截断 */
+td.wrap{white-space:normal;word-break:break-word;line-height:1.6}
+td.clip{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:var(--bg)}
 .amount-exp{color:var(--red);font-weight:500;font-variant-numeric:tabular-nums}
 .amount-inc{color:var(--green);font-weight:500;font-variant-numeric:tabular-nums}
 /* ===== 标签 / 徽章 ===== */
-.chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:2px 10px;border-radius:99px;background:var(--bg-soft);color:var(--ink-2)}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:2px 10px;border-radius:99px;background:var(--bg-soft);color:var(--ink-2);white-space:nowrap;flex-shrink:0}
 .chip.sage{background:var(--sage-soft);color:var(--sage)}
 .chip.mist{background:var(--mist-soft);color:var(--mist)}
 .chip.sand{background:var(--sand-soft);color:#9a8a68}
@@ -352,6 +355,60 @@ tr:hover td{background:var(--bg)}
 @media (max-width:480px){
   .grid-4{grid-template-columns:1fr 1fr}
 }
+/* ===== 手机窄屏：彻底消除「文字被挤成竖排」 ===== */
+@media (max-width:560px){
+  /* 收藏夹卡片内容多（标题+摘要+标签+状态），双列时每列仅约 140px，标题和标签会被压成竖排 */
+  .coll-grid{grid-template-columns:1fr}
+  /* 卡片标题与右侧按钮组不再互相抢宽度：按钮组整体换到第二行 */
+  .card-title{flex-wrap:wrap;row-gap:8px}
+  .card-title .sub{margin-left:0 !important;width:100%;flex-wrap:wrap}
+  /* 表格：单元格内边距收紧，一屏能多看到一列 */
+  th,td{padding:10px 11px}
+  .tbl-wrap{-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+  /* 身体月历：格子更小，数字缩到能放下；维度条数用圆点代替文字，避免「2 项维度」被截成「2…」 */
+  .cal-cell{padding:3px 3px}
+  .cal-w{font-size:11px}
+  .cal-d{font-size:11px}
+  .cal-x{font-size:0;line-height:0;height:7px;display:flex;align-items:center}
+  .cal-x::before{content:"";width:5px;height:5px;border-radius:99px;background:var(--mist);flex-shrink:0}
+  .cal-x .dot{display:none}
+  /* 备忘卡片：三个操作按钮原本竖排在右侧，把中间正文挤成一条窄缝（标题逐字换行）。
+     窄屏改为「正文占满整行，按钮组换到下方横排」。 */
+  .memo-card{flex-wrap:wrap}
+  .memo-card>div:not(.memo-acts){flex:1 1 calc(100% - 58px);min-width:0}
+  .memo-acts{flex-direction:row !important;flex:1 1 100%;flex-wrap:wrap;justify-content:flex-end;margin-top:2px}
+  /* 打包清单行：物品名 + 数量 + 备注 + 两个按钮挤一行，物品名只剩十几像素宽（"换洗衣物"竖成四行）。
+     窄屏让物品名先占满一行，其余元素换到下一行。 */
+  .pk-row{flex-wrap:wrap;row-gap:6px}
+  .pk-name{flex:1 1 auto !important;min-width:0;line-height:1.5}
+  .pk-note{flex:1 1 100%;order:10;max-width:none !important;padding-left:32px}
+  /* ===== 窄屏表格转「字段卡」 =====
+     表格 8 列在 390px 屏上是 715px 宽，横向滑到右边就看不到这是哪一条了。
+     改成每条记录一张卡，「字段名 / 值」两列横排，不用横滑也能看全。 */
+  .tbl-wrap:has(> .tbl-cards){overflow:visible;border:0;background:transparent;border-radius:0}
+  .tbl-cards{display:block;min-width:0 !important;font-size:13.5px}
+  .tbl-cards>thead{display:none}
+  .tbl-cards>tbody{display:block}
+  .tbl-cards>tbody>tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px;padding:13px 14px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--card);margin-bottom:9px}
+  .tbl-cards>tbody>tr:hover>td{background:transparent}
+  .tbl-cards>tbody>tr>td{display:flex;flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:2px 7px;border:0;padding:0;min-width:0;white-space:normal;word-break:break-word;line-height:1.55}
+  .tbl-cards>tbody>tr>td::before{content:attr(data-label);flex:0 0 auto;font-size:11px;color:var(--ink-3);line-height:1.4;white-space:nowrap;text-align:left}
+  /* 首列若是文字列，提成卡片标题（勾选框列不这么做，由 cards-title 控制） */
+  .tbl-cards>tbody>tr{position:relative}
+  .tbl-cards>tbody>tr>td.card-title-cell{grid-column:1/-1;font-weight:600;font-size:15px}
+  .tbl-cards>tbody>tr>td.card-title-cell::before{display:none}
+  .tbl-cards>tbody>tr>td.is-empty::after{content:"—";color:var(--ink-3)}
+  /* 无表头的列 = 勾选框 / 操作按钮：独占一行，按钮靠右 */
+  .tbl-cards>tbody>tr>td[data-label=""]{grid-column:1/-1;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:6px}
+  .tbl-cards>tbody>tr>td[data-label=""]::before{display:none}
+  /* 勾选框挪到卡片右上角，不再单独占一整格 */
+  .tbl-cards>tbody>tr:has(input[type=checkbox]){padding-right:48px}
+  .tbl-cards>tbody>tr>td[data-label=""]:has(input[type=checkbox]){position:absolute;top:13px;right:14px;grid-column:auto;display:block}
+  /* 仪表盘待办：标题原本强制单行省略，窄屏只剩「更换牙刷头（…」，改成最多两行 */
+  .today-item{flex-wrap:wrap;row-gap:6px}
+  .today-item .txt{flex:1 1 auto;min-width:0;white-space:normal;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.5}
+  .today-item .meta{flex:0 0 auto;font-size:11px}
+}
 </style>
 </head>
 <body>
@@ -513,6 +570,7 @@ function openModal(html, wide){
   const mask=document.getElementById("modalMask"), box=document.getElementById("modalBox");
   box.className = wide ? "modal wide" : "modal";
   box.innerHTML = html; mask.classList.add("open");
+  decorateTables();
 }
 function closeModal(){ document.getElementById("modalMask").classList.remove("open"); }
 document.getElementById("modalMask").addEventListener("click", e=>{ if(e.target.id==="modalMask") closeModal(); });
@@ -708,7 +766,37 @@ function refreshAll(){
   renderWishes();
   renderMemos();
   renderSettings();
+  decorateTables();
 }
+
+/* ---------- 窄屏表格转字段卡：把表头文字写进每个 td 的 data-label ---------- */
+function decorateTables(){
+  document.querySelectorAll(".tbl-wrap>table").forEach(tb=>{
+    /* CSV 预览表（min-width:auto）保持原样，横向数据卡片化没有意义 */
+    const st = tb.getAttribute("style") || "";
+    if(st.indexOf("min-width:auto") >= 0) return;
+    const ths = [...tb.querySelectorAll("thead tr:last-child>th")];
+    if(!ths.length) return;
+    tb.classList.add("tbl-cards");
+    /* 选一列当卡片标题：首列是文字就用首列；首列是勾选框（无表头）就用第二列 */
+    const titleIdx = ths[0].textContent.trim() ? 0 : (ths[1] && ths[1].textContent.trim() ? 1 : -1);
+    tb.querySelectorAll("tbody>tr").forEach(tr=>{
+      [...tr.children].forEach((td,i)=>{
+        if(!td.hasAttribute("data-label")) td.setAttribute("data-label", ths[i] ? ths[i].textContent.trim() : "");
+        if(i === titleIdx) td.classList.add("card-title-cell");
+        /* 空值列（如未评价）加占位，避免只剩一个孤零零的字段名 */
+        if(!td.textContent.trim() && !td.querySelector("input,button,a,img,svg,select")) td.classList.add("is-empty");
+      });
+    });
+  });
+}
+/* 表格会在很多地方局部重绘（切 tab、搜索过滤、换视图），统一用观察器兜住；
+   只监听结构变化、不监听属性，所以 decorateTables 自己写 data-label 不会触发回环。 */
+(function watchTables(){
+  let tick = false;
+  const run = () => { if(tick) return; tick = true; requestAnimationFrame(()=>{ tick = false; try{ decorateTables(); }catch(e){} }); };
+  new MutationObserver(run).observe(document.body, { childList: true, subtree: true });
+})();
 
 /* ---------- 计算层：收支统计 ---------- */
 function sumBy(fn){ return state.transactions.filter(fn).reduce((s,t)=>s+Number(t.amount),0); }
@@ -1318,7 +1406,7 @@ function renderShopping(){
           const note=s.purchased?(s.review?esc(s.review):"<span style='color:var(--ink-3)'>未评价</span>"):s.skipped?esc(s.skipReason||"—"):"";
           return '<tr><td><input type="checkbox" data-check="'+s.id+'" '+(s.purchased?"checked":"")+' style="width:20px;height:20px;min-height:0;padding:0;accent-color:var(--sage)"></td>'
             +'<td style="font-weight:500">'+esc(s.name)+(s.linkedItem?'<div style="font-size:12px;color:var(--ink-3);font-weight:400">关联：'+esc(s.linkedItem)+'</div>':"")+'</td>'
-            +'<td>×'+(s.qty||1)+'</td><td style="font-variant-numeric:tabular-nums">'+(s.budget?fmtMoney(s.budget):"—")+'</td><td>'+st+'</td><td style="font-size:13px;max-width:220px">'+note+'</td>'
+            +'<td>×'+(s.qty||1)+'</td><td style="font-variant-numeric:tabular-nums">'+(s.budget?fmtMoney(s.budget):"—")+'</td><td>'+st+'</td><td class="wrap" style="font-size:13px;max-width:220px;white-space:normal">'+note+'</td>'
             +'<td style="white-space:nowrap">'+(s.purchased&&!s.review?'<button class="btn btn-sm btn-ghost" data-review="'+s.id+'">写评价</button> ':"")
             +(!s.purchased&&!s.skipped?'<button class="btn btn-sm btn-ghost" data-skip="'+s.id+'">不买了</button> ':"")
             +'<button class="btn btn-sm btn-ghost btn-icon" data-edit="'+s.id+'">'+ICONS.edit+'</button> <button class="btn btn-sm btn-ghost btn-icon" data-del="'+s.id+'">'+ICONS.trash+'</button></td></tr>';
@@ -1532,7 +1620,7 @@ function renderCollections(){
     +(!list.length
       ? '<div class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg><p>暂无收藏，点右上角把刷到的好东西存进来</p></div>'
       : collFilter.view==="card"
-        ? '<div class="grid grid-3">'+list.map(c=>collCard(c,PF)).join("")+'</div>'
+        ? '<div class="grid grid-3 coll-grid">'+list.map(c=>collCard(c,PF)).join("")+'</div>'
         : '<div class="tbl-wrap"><table><thead><tr><th>标题</th><th>平台</th><th>分类</th><th>状态</th><th>标签</th><th></th></tr></thead><tbody>'
           +list.map(c=>'<tr><td style="font-weight:500;max-width:260px"><span data-coll-open="'+c.id+'" role="button" tabindex="0" title="点击查看详情" style="cursor:pointer;border-bottom:1px dashed var(--line)">'+esc(c.title)+'</span>'+(c.link?' <a href="'+esc(c.link)+'" target="_blank" rel="noopener" style="color:var(--mist);font-size:12px">原文</a>':"")+'</td><td><span class="chip '+(c.platform==="xhs"?"red":c.platform==="douban"?"sage":"")+'">'+PF[c.platform]+'</span></td><td>'+esc(c.type)+'</td><td>'+collStatusBtn(c)+'</td><td style="font-size:12px;color:var(--ink-3)">'+(c.tags||[]).map(t=>"#"+esc(t)).join(" ")+'</td><td style="white-space:nowrap"><button class="btn btn-sm btn-ghost btn-icon" data-edit="'+c.id+'">'+ICONS.edit+'</button> <button class="btn btn-sm btn-ghost btn-icon" data-del="'+c.id+'">'+ICONS.trash+'</button></td></tr>').join("")
           +'</tbody></table></div>');
@@ -1541,7 +1629,7 @@ function renderCollections(){
   [["collPF","platform"],["collType","type"],["collTag","tag"],["collStatus","status"]].forEach(([id,k])=>{
     document.getElementById(id).onchange=e=>{collFilter[k]=e.target.value; renderCollections();};
   });
-  document.getElementById("collViewT").onclick=()=>{collFilter.view=collFilter.view==="card"?"list":"card"; renderCollections();};
+  document.getElementById("collViewT").onclick=()=>{collFilter.view=collFilter.view==="card"?"list":"card"; renderCollections(); decorateTables();};
   document.getElementById("collAdd").onclick=openCollEntry;
   el.querySelectorAll("[data-st]").forEach(b=>b.onclick=()=>{
     const c=state.collections.find(x=>x.id===b.dataset.st);
@@ -1808,11 +1896,11 @@ function renderPacking(){
     const rows=list.items.filter(i=>i.category===cat);
     if(!rows.length) return;
     html+='<div class="card" style="margin-bottom:12px;padding:0;overflow:hidden"><div style="padding:10px 16px;background:var(--bg-soft);font-size:13px;font-weight:600;color:var(--ink-2)">'+esc(cat)+'（'+rows.filter(i=>i.checked).length+'/'+rows.length+'）</div>'
-      +rows.map(i=>'<div style="display:flex;align-items:center;gap:12px;padding:11px 16px;border-top:1px solid var(--line)">'
+      +rows.map(i=>'<div class="pk-row" style="display:flex;align-items:center;gap:12px;padding:11px 16px;border-top:1px solid var(--line)">'
         +'<input type="checkbox" data-pk="'+i.id+'" '+(i.checked?"checked":"")+' style="width:20px;height:20px;min-height:0;padding:0;accent-color:var(--sage);flex-shrink:0">'
-        +'<span style="flex:1;font-size:14px;'+(i.checked?"text-decoration:line-through;color:var(--ink-3)":"")+'">'+esc(i.name)+'</span>'
+        +'<span class="pk-name" style="flex:1;min-width:0;font-size:14px;'+(i.checked?"text-decoration:line-through;color:var(--ink-3)":"")+'">'+esc(i.name)+'</span>'
         +(i.qty>1?'<span class="chip">×'+i.qty+'</span>':"")
-        +(i.note?'<span style="font-size:12px;color:var(--ink-3);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(i.note)+'</span>':"")
+        +(i.note?'<span class="pk-note" style="font-size:12px;color:var(--ink-3);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(i.note)+'</span>':"")
         +'<button class="btn btn-sm btn-ghost btn-icon" data-edit="'+i.id+'">'+ICONS.edit+'</button>'
         +'<button class="btn btn-sm btn-ghost btn-icon" data-del="'+i.id+'">'+ICONS.trash+'</button></div>').join("")+'</div>';
   });
@@ -4332,14 +4420,14 @@ function renderMemos(){
     +(list.length
       ? list.map(m=>{
           const st=memoStatus(m);
-          return '<div class="card" data-memo-open="'+m.id+'" tabindex="0" role="button" title="点击查看详情" aria-label="查看备忘详情：'+esc(m.title)+'" style="margin-bottom:10px;padding:16px;display:flex;gap:12px;align-items:flex-start">'
+          return '<div class="card memo-card" data-memo-open="'+m.id+'" tabindex="0" role="button" title="点击查看详情" aria-label="查看备忘详情：'+esc(m.title)+'" style="margin-bottom:10px;padding:16px;display:flex;gap:12px;align-items:flex-start">'
             +'<button class="btn btn-sm '+(m.done?"btn-primary":"btn-ghost")+' btn-icon" data-toggle="'+m.id+'" title="'+(m.done?"标记未完成":"标记完成")+'" style="flex-shrink:0">'+(m.done?"✓":"")+'</button>'
             +'<div style="flex:1;min-width:0"><div style="font-weight:500;display:flex;align-items:flex-start;gap:6px"><span style="flex:1;min-width:0;'+(m.done?"text-decoration:line-through;color:var(--ink-3)":"")+'">'+esc(m.title)+'</span><span class="wish-chev" aria-hidden="true">›</span></div>'
             +(m.content?'<div style="font-size:13px;color:var(--ink-2);margin-top:2px">'+esc(m.content)+'</div>':"")
             +'<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap"><span class="chip '+st.cls+'">'+st.label+'</span>'
             +(m.repeat!=="none"?'<span class="chip">重复：'+({daily:"每天",weekly:"每周",monthly:"每月"}[m.repeat]||"")+'</span>':"")
             +(m.tags||[]).map(t=>'<span class="chip">'+esc(t)+'</span>').join("")+'</div></div>'
-            +'<div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">'
+            +'<div class="memo-acts" style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">'
             +'<button class="btn btn-sm btn-ghost" data-ics="'+m.id+'" title="下载 .ics 日历提醒文件">添加到苹果提醒</button>'
             +'<button class="btn btn-sm btn-ghost btn-icon" data-edit="'+m.id+'">'+ICONS.edit+'</button>'
             +'<button class="btn btn-sm btn-ghost btn-icon" data-del="'+m.id+'">'+ICONS.trash+'</button></div></div>';
